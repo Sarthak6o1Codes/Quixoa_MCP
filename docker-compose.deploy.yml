@@ -1,0 +1,84 @@
+# LibreChat + Google Workspace MCP - One-command deployment
+# Usage: docker compose -f docker-compose.deploy.yml up -d
+
+services:
+  librechat:
+    build:
+      context: .
+      dockerfile: Dockerfile.deploy
+    image: librechat:deploy
+    container_name: librechat
+    ports:
+      - "3080:3080"
+      - "8080:8080"   # Google Workspace OAuth callback
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3080
+      - DOCKER_RUN=1
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - MEILI_HOST=http://meilisearch:7700
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./images:/app/client/public/images
+      - ./oauth_data:/app/oauth_data
+      - ./scripts:/app/scripts
+      - ./api/server:/app/api/server
+
+  mongodb:
+    image: mongo:8.0.17
+    container_name: librechat-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    command: mongod --noauth
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.1
+    container_name: librechat-meilisearch
+    restart: unless-stopped
+    environment:
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-}
+    volumes:
+      - meili_data:/meili_data
+
+  # Optional: RAG API for file search (uncomment to enable)
+  # vectordb:
+  #   image: pgvector/pgvector:0.8.0-pg15-trixie
+  #   environment:
+  #     POSTGRES_DB: mydatabase
+  #     POSTGRES_USER: myuser
+  #     POSTGRES_PASSWORD: mypassword
+  #   restart: unless-stopped
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #
+  # rag_api:
+  #   image: registry.librechat.ai/danny-avila/librechat-rag-api-dev-lite:latest
+  #   environment:
+  #     - DB_HOST=vectordb
+  #     - RAG_PORT=8000
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - vectordb
+  #   env_file:
+  #     - .env
+
+volumes:
+  mongodb_data:
+  meili_data:
+  # pgdata:

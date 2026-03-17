@@ -1,0 +1,26 @@
+# Google Workspace MCP - standalone HTTP endpoint
+# Usage: docker compose -f docker-compose.google-workspace.yml up -d
+# Endpoint: http://localhost:8000/mcp
+
+services:
+  google-workspace-mcp:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile
+    image: google-workspace-mcp:latest
+    container_name: google-workspace-mcp
+    ports:
+      - "8000:8000"
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_PORT=8000
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_MCP_REDIRECT_URI=${GOOGLE_MCP_REDIRECT_URI:-http://localhost:8080/}
+    # Optional: persist OAuth token across restarts (create token.json after first OAuth)
+    # volumes:
+    #   - mcp_token:/app
+    restart: unless-stopped
+
+# volumes:
+#   mcp_token:
